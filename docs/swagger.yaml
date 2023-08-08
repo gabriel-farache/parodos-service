@@ -1,0 +1,35 @@
+basePath: /
+definitions:
+  workflows.Workflow:
+    properties:
+      name:
+        maxLength: 16
+        minLength: 4
+        type: string
+    type: object
+host: parodos-dev:8080
+info:
+  contact:
+    email: parodos@redhat.com
+    name: API Support
+    url: http://www.parodos.dev
+  description: This is a project to run enterprise workflows on demand
+  title: Parodos API Documentation
+  version: "2.0"
+paths:
+  /workflows:
+    get:
+      consumes:
+      - application/json
+      description: return the list of workflows definitions registered.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            items:
+              $ref: '#/definitions/workflows.Workflow'
+            type: array
+      summary: Get a list of workflows definitions
+swagger: "2.0"
