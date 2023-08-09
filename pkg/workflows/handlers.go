@@ -5,19 +5,26 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
+	"github.com/parodos-dev/parodos-service/pkg/errors"
 	"github.com/swaggo/swag/example/celler/httputil"
 )
 
 type WorkflowDefinitionHandler struct {
 	command *WorkflowCommandHandler
-	query   *WorkflowQueryHandler
+	query   WorkflowsQuery
 }
 
-func newWorkflowDefinitionHandler() *WorkflowDefinitionHandler {
+func newDefaultWorkflowDefinitionHandler() *WorkflowDefinitionHandler {
 	return &WorkflowDefinitionHandler{
 		command: newWorkflowCommandHandler(),
-		query:   newWorkflowQueryHandler(),
+		query:   newWorkflowsQueryHandler(),
+	}
+}
+
+func NewWorkflowDefinitionHandler(command *WorkflowCommandHandler, query WorkflowsQuery) *WorkflowDefinitionHandler {
+	return &WorkflowDefinitionHandler{
+		command: command,
+		query:   query,
 	}
 }
 
@@ -31,10 +38,12 @@ func newWorkflowDefinitionHandler() *WorkflowDefinitionHandler {
 // @Failure		500  {object}  httputil.HTTPError
 // @Router 		/groups [get]
 func (handler WorkflowDefinitionHandler) GetGroups(ctx *gin.Context) {
-	ctx.JSON(200, []Group{
-		{Name: "parodos", Repository: "https://github.com/parodos-dev/parodos"},
-		{Name: "parodos-service", Repository: "https://github.com/parodos-dev/parodos-service"},
-	})
+	groups, err := handler.query.ListGroups()
+	if err != nil {
+		processError(err, ctx)
+		return
+	}
+	ctx.JSON(200, groups)
 }
 
 // @Summary 	Get the details of a registered group
@@ -47,25 +56,18 @@ func (handler WorkflowDefinitionHandler) GetGroups(ctx *gin.Context) {
 // @Failure		500  {object}  httputil.HTTPError
 // @Router 		/groups/{group_id} [get]
 func (handler WorkflowDefinitionHandler) GetGroup(ctx *gin.Context) {
-	groupId, _ := ctx.Get(GroupIdParam)
-	// TODO actually checks if the group exists
-	groupExists := true
-	if !groupExists {
-		httputil.NewError(ctx, http.StatusNotFound, fmt.Errorf("Group %q not found", GroupIdParam))
+	groupId, ok := ctx.Get(GroupIdParam)
+	if !ok {
+		httputil.NewError(ctx, http.StatusBadRequest, fmt.Errorf("no group id provided"))
 		return
 	}
-	glog.Infof("Get details of groups %q", groupId)
+	group, err := handler.query.GetGroup(groupId.(string))
+	if err != nil {
+		processError(err, ctx)
+		return
+	}
 
-	ctx.JSON(200, GroupDetails{
-		Group: Group{
-			Name:       "parodos-service",
-			Repository: "https://github.com/parodos-dev/parodos-service",
-		},
-		Workflows: []Workflow{
-			{Name: "test1"},
-			{Name: "test2"},
-		},
-	})
+	ctx.JSON(200, group)
 }
 
 // @Summary Get a list of workflows definitions in the group
@@ -78,18 +80,17 @@ func (handler WorkflowDefinitionHandler) GetGroup(ctx *gin.Context) {
 // @Failure		500  {object}  httputil.HTTPError
 // @Router 		/groups/{group_id}/workflows [get]
 func (handler WorkflowDefinitionHandler) GetWorkflows(ctx *gin.Context) {
-	groupId, _ := ctx.Get(GroupIdParam)
-	// TODO actually checks if the group exists
-	groupExists := true
-	if !groupExists {
-		httputil.NewError(ctx, http.StatusNotFound, fmt.Errorf("Group %q not found", GroupIdParam))
+	groupId, ok := ctx.Get(GroupIdParam)
+	if !ok {
+		httputil.NewError(ctx, http.StatusBadRequest, fmt.Errorf("no group id provided"))
 		return
 	}
-	glog.Infof("Get workflows of groups %q", groupId)
-	ctx.JSON(200, []Workflow{
-		{Name: "test1"},
-		{Name: "test2"},
-	})
+	workflows, err := handler.query.ListWorkflows(groupId.(string))
+	if err != nil {
+		processError(err, ctx)
+		return
+	}
+	ctx.JSON(200, workflows)
 }
 
 // @Summary Get a workflow definition
@@ -102,17 +103,32 @@ func (handler WorkflowDefinitionHandler) GetWorkflows(ctx *gin.Context) {
 // @Failure		500  {object}  httputil.HTTPError
 // @Router 		/groups/{group_id}/workflows/{workflow_id} [get]
 func (handler WorkflowDefinitionHandler) GetWorkflow(ctx *gin.Context) {
-	groupId, _ := ctx.Get(GroupIdParam)
-	//if !groupExists {
-	//	httputil.NewError(ctx, http.StatusNotFound, fmt.Errorf("Group %q not found", GroupIdParam))
-	//	return
-	//}
-	workflowId, _ := ctx.Get(WorkflowIdParam)
-	//if !workflowExists {
-	//	httputil.NewError(ctx, http.StatusNotFound, fmt.Errorf("Workflow %q of group %q not found", WorkflowIdParam, GroupIdParam))
-	//	return
-	//}
-	glog.Infof("Get workflow %q of groups %q", workflowId, groupId)
+	groupId, ok := ctx.Get(GroupIdParam)
+	if !ok {
+		httputil.NewError(ctx, http.StatusBadRequest, fmt.Errorf("no group id provided"))
+		return
+	}
+	workflowId, ok := ctx.Get(WorkflowIdParam)
+	if !ok {
+		httputil.NewError(ctx, http.StatusBadRequest, fmt.Errorf("no workflow id provided"))
+		return
+	}
+	workflow, err := handler.query.GetWorkflow(groupId.(string), workflowId.(string))
+	if err != nil {
+		processError(err, ctx)
+		return
+	}
+	ctx.JSON(200, workflow)
+}
 
-	ctx.JSON(200, Workflow{Name: workflowId.(string)})
+func processError(err error, ctx *gin.Context) {
+	switch t := err.(type) {
+	default:
+		httputil.NewError(ctx, http.StatusInternalServerError, t)
+	case *errors.BadRequestError, errors.BadRequestError:
+		httputil.NewError(ctx, http.StatusBadRequest, t)
+	case *errors.NotFoundError, errors.NotFoundError:
+		httputil.NewError(ctx, http.StatusNotFound, t)
+	}
+
 }

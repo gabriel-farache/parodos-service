@@ -7,7 +7,7 @@ import (
 )
 
 func InitWorkflows(router *gin.Engine) {
-	workflowDefinitionHandler := newWorkflowDefinitionHandler()
+	workflowDefinitionHandler := newDefaultWorkflowDefinitionHandler()
 	registerRouter(router, workflowDefinitionHandler)
 }
 
