@@ -1,10 +1,54 @@
-basePath: /
+basePath: /api/v1
 definitions:
-  workflows.Workflow:
+  httputil.HTTPError:
+    properties:
+      code:
+        example: 400
+        type: integer
+      message:
+        example: status bad request
+        type: string
+    type: object
+  pkg_workflows.Group:
     properties:
       name:
+        example: kogito-examples
         maxLength: 16
         minLength: 4
+        type: string
+      repository:
+        example: https://github.com/kiegroup/kogito-examples/tree/stable
+        minLength: 10
+        type: string
+    type: object
+  pkg_workflows.GroupDetails:
+    properties:
+      name:
+        example: kogito-examples
+        maxLength: 16
+        minLength: 4
+        type: string
+      repository:
+        example: https://github.com/kiegroup/kogito-examples/tree/stable
+        minLength: 10
+        type: string
+      workflows:
+        items:
+          $ref: '#/definitions/pkg_workflows.Workflow'
+        type: array
+    type: object
+  pkg_workflows.Workflow:
+    properties:
+      input_arguments:
+        example: '{ ''fahrenheit'': 100 }'
+        type: string
+      meta:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        example: fahrenheit_to_celsius
+        minLength: 3
         type: string
     type: object
 host: parodos-dev:8080
@@ -17,11 +61,11 @@ info:
   title: Parodos API Documentation
   version: "2.0"
 paths:
-  /workflows:
+  /groups:
     get:
       consumes:
       - application/json
-      description: return the list of workflows definitions registered.
+      description: return the list of groups registered.
       produces:
       - application/json
       responses:
@@ -29,7 +73,97 @@ paths:
           description: ok
           schema:
             items:
-              $ref: '#/definitions/workflows.Workflow'
+              $ref: '#/definitions/pkg_workflows.Group'
             type: array
-      summary: Get a list of workflows definitions
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+      summary: Get a list of groups
+  /groups/{group_id}:
+    get:
+      consumes:
+      - application/json
+      description: return the details of a given registered group.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/pkg_workflows.GroupDetails'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+      summary: Get the details of a registered group
+  /groups/{group_id}/workflows:
+    get:
+      consumes:
+      - application/json
+      description: return the list of workflows definitions registered in the given
+        group.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            items:
+              $ref: '#/definitions/pkg_workflows.Workflow'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+      summary: Get a list of workflows definitions in the group
+  /groups/{group_id}/workflows/{workflow_id}:
+    get:
+      consumes:
+      - application/json
+      description: return the workflow definition registered.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/pkg_workflows.Workflow'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.HTTPError'
+      summary: Get a workflow definition
 swagger: "2.0"

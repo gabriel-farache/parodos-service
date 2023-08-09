@@ -19,7 +19,7 @@ import (
 // @contact.email parodos@redhat.com
 
 // @host parodos-dev:8080
-// @BasePath /
+// @BasePath /api/v1
 
 func main() {
 	router := gin.New()

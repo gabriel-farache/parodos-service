@@ -29,7 +29,7 @@ run: ## Run the api project
 
 openapi: ## Create the latest openapi specs from c
 openapi: install-swag
-	$(SWAG) init -g $(API)
+	$(SWAG) init --parseDependency --parseInternal --parseDepth 1 -g $(API)
 
 test: ## Run tests.
 test: install-ginkgo
